@@ -1,0 +1,89 @@
+# org: umgbhalla
+app: serverless-iam-api
+service: serverless-iam-api
+# serverless.yml
+
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+  - serverless-dynamodb-local
+
+custom:
+  tableName: 'users-table-dynamo${self:provider.stage}'
+  wsgi:
+    app: app.app
+    packRequirements: false
+  pythonRequirements:
+    dockerizePip: non-linux
+  dynamodb:
+    start:
+      migrate: true
+
+package:
+  exclude:
+    - node_modules/**
+    - venv/**
+
+provider:
+  name: aws
+  runtime: python3.8
+  stage: dev
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { 'Fn::GetAtt': ['UsersDynamoDBTable', 'Arn'] }
+  environment:
+    USERS_TABLE: ${self:custom.tableName}
+
+functions:
+  api:
+    handler: wsgi_handler.handler
+    events:
+      - http:
+          path: /
+          method: any
+          integration: lambda-proxy
+      - http: # List IAM users
+          path: /users
+          method: get
+          integration: lambda-proxy
+      - http: # Show single IAM user details
+          path: /user/{proxy+}
+          method: get
+          integration: lambda-proxy
+      - http:
+          path: /sync
+          method: get
+          integration: lambda-proxy
+      - http: # Delete IAM user
+          path: /delete/{proxy+}
+          method: delete
+          integration: lambda-proxy
+      - http: # Create IAM user
+          path: /create/{proxy+}
+          method: post
+          integration: lambda-proxy
+
+resources:
+  Resources:
+    UsersDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: UserId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: UserId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}

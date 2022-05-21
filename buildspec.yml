@@ -1,0 +1,29 @@
+version: 0.2
+
+env:
+  variables:
+    SLS_DEBUG: '*'
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 12
+      python: 3.8
+    commands:
+      - npm install --global serverless
+      - npm install --global fs-extra@9.1.0
+      - npm install --global serverless-wsgi serverless-python-requirements
+
+  pre_build:
+    commands:
+      - pip install -r requirements.txt
+  build:
+    commands:
+      - echo Deployment started on $(date)... - echo Deploying with the Serverless Framework...
+      - serverless plugin install --name serverless-python-requirements
+      - serverless plugin install --name serverless-wsgi
+      - serverless plugin install --name serverless-dynamodb-local
+      - serverless deploy --verbose
+  post_build:
+    commands:
+      - echo Deployment completed on $(date) ...
