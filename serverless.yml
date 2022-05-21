@@ -6,7 +6,6 @@ service: serverless-iam-api
 plugins:
   - serverless-python-requirements
   - serverless-wsgi
-  - serverless-dynamodb-local
 
 custom:
   tableName: 'users-table-dynamo${self:provider.stage}'
